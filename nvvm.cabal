@@ -46,6 +46,7 @@ library
 
   exposed-modules:
       Foreign.NVVM.Error
+      Foreign.NVVM.Info
 
   other-modules:
       Foreign.NVVM.Internal.C2HS
