@@ -45,6 +45,7 @@ library
   ghc-options:        -Wall -O2
 
   exposed-modules:
+      Foreign.NVVM
       Foreign.NVVM.Compile
       Foreign.NVVM.Error
       Foreign.NVVM.Info
