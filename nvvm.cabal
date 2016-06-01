@@ -58,6 +58,9 @@ library
     , bytestring
     , cuda            >= 0.7
 
+  build-tools:
+      c2hs            >= 0.26.1
+
 
 source-repository head
   type:               git
