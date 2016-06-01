@@ -33,19 +33,28 @@ category:             Foreign
 build-type:           Simple
 cabal-version:        >=1.10
 
-extra-source-files:   CHANGELOG.md
-                      README.md
+extra-source-files:
+    CHANGELOG.md
+    README.md
+    cbits/stubs.h
+
 
 library
   default-language:   Haskell2010
-  -- exposed-modules:
-  -- other-modules:
+  include-dirs:       .
+  ghc-options:        -Wall -O2
+
+  exposed-modules:
+      Foreign.NVVM.Error
+
+  other-modules:
+      Foreign.NVVM.Internal.C2HS
 
   build-depends:
       base >= 4.7
 
 
-source-repository: head
+source-repository head
   type:               git
   location:           https://github.com/tmcdonell/nvvm
 
