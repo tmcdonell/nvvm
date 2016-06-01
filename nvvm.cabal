@@ -45,6 +45,7 @@ library
   ghc-options:        -Wall -O2
 
   exposed-modules:
+      Foreign.NVVM.Compile
       Foreign.NVVM.Error
       Foreign.NVVM.Info
 
@@ -52,7 +53,9 @@ library
       Foreign.NVVM.Internal.C2HS
 
   build-depends:
-      base >= 4.7
+      base            >= 4.7
+    , bytestring
+    , cuda            >= 0.7
 
 
 source-repository head
