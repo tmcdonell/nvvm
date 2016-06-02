@@ -83,8 +83,8 @@ nvvmErrorIO s = throwIO (UserError s)
 -- |
 -- A specially formatted error message
 --
-requireSDK :: Name -> Double -> IO a
-requireSDK n v = nvvmErrorIO $ printf "'%s' requires at least cuda-%3.1f\n" (show n) v
+requireSDK :: Name -> Double -> a
+requireSDK n v = nvvmError $ printf "'%s' requires at least cuda-%3.1f\n" (show n) v
 
 
 -- Helper functions
