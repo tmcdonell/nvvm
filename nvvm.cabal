@@ -30,7 +30,7 @@ author:               Trevor L. McDonell
 maintainer:           Trevor L. McDonell <tmcdonell@cse.unsw.edu.au>
 copyright:            [2016] Trevor L. McDonell
 category:             Foreign
-build-type:           Simple
+build-type:           Custom
 cabal-version:        >=1.10
 
 extra-source-files:
@@ -38,6 +38,8 @@ extra-source-files:
     README.md
     cbits/stubs.h
 
+extra-tmp-files:
+    nvvm.buildinfo.generated
 
 library
   default-language:   Haskell2010
