@@ -12,6 +12,7 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Verbosity
 
+import Control.Applicative
 import Control.Exception
 import Control.Monad
 import System.Directory
@@ -19,6 +20,7 @@ import System.Environment
 import System.FilePath
 import System.IO.Error
 import Text.Printf
+import Prelude
 
 
 customBuildInfoFilePath :: FilePath
