@@ -73,3 +73,8 @@ nvvmVersion = unsafePerformIO $ do
     -> `Status' cToEnum
 #}
 
+#if __GLASGOW_HASKELL__ <= 708
+makeVersion :: [Int] -> Version
+makeVersion vs = Version vs []
+#endif
+
