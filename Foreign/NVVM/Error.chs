@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 --------------------------------------------------------------------------------
 -- |
 -- Module    : Foreign.NVVM.Error
@@ -21,6 +22,7 @@ import Foreign.NVVM.Internal.C2HS
 import Foreign.C.String
 
 import Control.Exception
+import Data.Typeable
 
 
 #include "cbits/stubs.h"
@@ -57,6 +59,7 @@ import Control.Exception
 data NVVMException
   = ExitCode Status
   | UserError String
+  deriving Typeable
 
 instance Exception NVVMException
 
