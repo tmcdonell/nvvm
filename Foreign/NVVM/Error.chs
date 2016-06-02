@@ -14,7 +14,7 @@ module Foreign.NVVM.Error (
   Status(..),
   describe,
   resultIfOk, nothingIfOk,
-  nvvmError, nvvmErrorIO,
+  nvvmError, nvvmErrorIO, requireSDK,
 
 ) where
 
@@ -23,7 +23,8 @@ import Foreign.C.String
 
 import Control.Exception
 import Data.Typeable
-
+import Language.Haskell.TH
+import Text.Printf
 
 #include "cbits/stubs.h"
 {# context lib="nvvm" #}
@@ -78,6 +79,12 @@ nvvmError s = throw (UserError s)
 --
 nvvmErrorIO :: String -> IO a
 nvvmErrorIO s = throwIO (UserError s)
+
+-- |
+-- A specially formatted error message
+--
+requireSDK :: Name -> Double -> IO a
+requireSDK n v = nvvmErrorIO $ printf "'%s' requires at least cuda-%3.1f\n" (show n) v
 
 
 -- Helper functions

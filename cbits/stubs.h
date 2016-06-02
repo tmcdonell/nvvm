@@ -12,6 +12,7 @@
 #define C_STUBS_H
 
 #include <nvvm.h>
+#include <cuda.h> // required for CUDA_VERSION, a proxy for NVVM_VERSION
 
 #endif /* C_STUBS_H */
 

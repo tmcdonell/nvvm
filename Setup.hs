@@ -167,12 +167,14 @@ validateIOLocation verbosity platform iopath =
 --
 validateLocation :: Verbosity -> Platform -> FilePath -> IO Bool
 validateLocation verbosity platform path = do
-  let testedPath = nvvmIncludePath platform path </> "nvvm.h"
-  exists <- doesFileExist testedPath
+  let nvvmHeader = nvvmIncludePath platform path </> "nvvm.h"
+      cudaHeader = cudaIncludePath platform path </> "cuda.h"
+  --
+  exists <- (&&) <$> doesFileExist nvvmHeader <*> doesFileExist cudaHeader
   info verbosity $
     if exists
       then printf "Path accepted: %s" path
-      else printf "Path rejected: %s\nDoes not exist: %s" path testedPath
+      else printf "Path rejected: %s\nDoes not exist: %s or %s" path cudaHeader nvvmHeader
   return exists
 
 
@@ -226,12 +228,12 @@ cudaNotFoundMsg = unlines
 libraryBuildInfo :: FilePath -> Platform -> Version -> IO HookedBuildInfo
 libraryBuildInfo installPath platform@(Platform arch os) ghcVersion = do
   let
-      libraryPath       = nvvmLibraryPath platform installPath
-      includePath       = nvvmIncludePath platform installPath
+      libraryPaths      = [nvvmLibraryPath platform installPath]
+      includePaths      = [nvvmIncludePath platform installPath, cudaIncludePath platform installPath]
 
       -- options for GHC
-      extraLibDirs'     = [libraryPath]
-      ccOptions'        = ["-I" ++ includePath]
+      extraLibDirs'     = libraryPaths
+      ccOptions'        = map ("-I"++) includePaths
       ldOptions'        = map ("-L"++) extraLibDirs'
       ghcOptions        = map ("-optc"++) ccOptions'
                        ++ map ("-optl"++) ldOptions'
@@ -282,6 +284,9 @@ nvvmPath _ base = base </> "nvvm"
 
 nvvmIncludePath :: Platform -> FilePath -> FilePath
 nvvmIncludePath platform base = nvvmPath platform base </> "include"
+
+cudaIncludePath :: Platform -> FilePath -> FilePath
+cudaIncludePath _ base = base </> "include"
 
 nvvmLibraryPath :: Platform -> FilePath -> FilePath
 nvvmLibraryPath platform@(Platform arch os) base = nvvmPath platform base </> libpath
