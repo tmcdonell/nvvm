@@ -2,6 +2,7 @@
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Parse
 import Distribution.Simple
+import Distribution.Simple.BuildPaths
 import Distribution.Simple.Command
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.PreProcess                               hiding ( ppC2hs )
@@ -23,6 +24,9 @@ import Text.Printf
 import Prelude
 
 
+-- Configuration
+-- -------------
+
 customBuildInfoFilePath :: FilePath
 customBuildInfoFilePath = "nvvm" <.> "buildinfo"
 
@@ -30,6 +34,8 @@ generatedBuldInfoFilePath :: FilePath
 generatedBuldInfoFilePath = customBuildInfoFilePath <.> "generated"
 
 
+-- Build setup
+-- -----------
 
 main :: IO ()
 main = defaultMainWithHooks customHooks
@@ -53,6 +59,7 @@ main = defaultMainWithHooks customHooks
         , preReg              = readHook regVerbosity
         , preUnreg            = readHook regVerbosity
         , postConf            = postConfHook
+        , postBuild           = postBuildHook
         , hookedPreProcessors = ("chs", ppC2hs) : filter (\x -> fst x /= "chs") (hookedPreProcessors simpleUserHooks)
         }
 
@@ -68,9 +75,9 @@ main = defaultMainWithHooks customHooks
     postConfHook :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO ()
     postConfHook args flags pkg_descr lbi = do
       let
-          verbosity = fromFlag (configVerbosity flags)
+          verbosity       = fromFlag (configVerbosity flags)
           currentPlatform = hostPlatform lbi
-          compilerId_ = (compilerId $ compiler lbi)
+          compilerId_     = compilerId (compiler lbi)
       --
       noExtraFlags args
       generateAndStoreBuildInfo verbosity currentPlatform compilerId_ generatedBuldInfoFilePath
@@ -79,6 +86,50 @@ main = defaultMainWithHooks customHooks
       actualBuildInfoToUse <- getHookedBuildInfo verbosity
       let pkg_descr' = updatePackageDescription actualBuildInfoToUse pkg_descr
       postConf simpleUserHooks args flags pkg_descr' lbi
+
+    -- This hook fixes the embedded LC_RPATHs in the generated .dylib on OSX.
+    postBuildHook :: Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
+    postBuildHook args flags pkg_descr lbi = do
+      let
+          verbosity           = fromFlag (buildVerbosity flags)
+          platform            = hostPlatform lbi
+          cid                 = compilerId (compiler lbi)
+          uid                 = localUnitId lbi
+          sharedLib           = buildDir lbi </> mkSharedLibName cid uid
+          Just extraLibDirs'  = extraLibDirs . libBuildInfo <$> library pkg_descr
+      --
+      noExtraFlags args
+      updateLibraryRPATHs verbosity platform sharedLib extraLibDirs'
+
+
+-- It seems that the GHC and/or Cabal developers don't quite understand how
+-- dynamic linking works on OSX. Even though we have specified
+-- '-optl-Wl,-rpath,...' as part of the configuration, this (sometimes?) gets
+-- filtered out somewhere, and the resulting .dylib that is generated does not
+-- have this path embedded as an LC_RPATH. The result is that the NVVM library
+-- will not be found, resulting in a link-time error.
+--
+-- On *nix (and versions of OSX previous to El Capitan 10.11), we could use
+-- [DY]LD_LIBRARY_PATH to specify where to resolve @rpath locations, but that is
+-- no longer an option on OSX due to System Integrity Protection.
+--
+-- An alternate argument is that the CUDA installer should have updated the
+-- install name (LC_ID_DYLIB) of its dynamic libraries to include the full
+-- absolute path, rather than relying on @rpath in the first place, which is
+-- what Apple's system libraries do for example.
+--
+updateLibraryRPATHs :: Verbosity -> Platform -> FilePath -> [FilePath] -> IO ()
+updateLibraryRPATHs verbosity (Platform _ os) sharedLib extraLibDirs' =
+  when (os == OSX) $ do
+    exists <- doesFileExist sharedLib
+    unless exists $ die $ printf "Unexpected failure: library does not exist: %s" sharedLib
+    --
+    mint   <- findProgramLocation verbosity "install_name_tool"
+    case mint of
+      Nothing                -> notice verbosity $ "Could not locate 'install_name_tool' in order to update LC_RPATH entries. This is likely to cause problems later on."
+      Just install_name_tool ->
+        forM_ extraLibDirs' $ \libDir ->
+          runProgramInvocation verbosity $ simpleProgramInvocation install_name_tool ["-add_rpath", libDir, sharedLib]
 
 
 -- Reads user-provided `nvvm.buildinfo` if present, otherwise loads `nvvm.buildinfo.generated`
@@ -123,7 +174,7 @@ generateAndStoreBuildInfo verbosity platform (CompilerId _ghcFlavor ghcVersion) 
 --
 findCUDAInstallPath :: Verbosity -> Platform -> IO FilePath
 findCUDAInstallPath verbosity platform = do
-  result <- findFirstValidLocation verbosity platform (candidateCUDAInstallPaths verbosity)
+  result <- findFirstValidLocation verbosity platform (candidateCUDAInstallPaths verbosity platform)
   case result of
     Just installPath -> do
       notice verbosity $ printf "Found CUDA toolkit at: %s" installPath
@@ -182,11 +233,11 @@ validateLocation verbosity platform path = do
 
 -- Returns pairs of (action yielding candidate path, String description of that location)
 --
-candidateCUDAInstallPaths :: Verbosity -> [(IO FilePath, String)]
-candidateCUDAInstallPaths verbosity =
-  [ (getEnv "CUDA_PATH",       "environment variable CUDA_PATH")
-  , (findInPath,               "nvcc compiler executable in PATH")
-  , (return "/usr/local/cuda", "default install location /usr/local/cuda")
+candidateCUDAInstallPaths :: Verbosity -> Platform -> [(IO FilePath, String)]
+candidateCUDAInstallPaths verbosity platform =
+  [ (getEnv "CUDA_PATH", "environment variable CUDA_PATH")
+  , (findInPath,         "nvcc compiler executable in PATH")
+  , (return defaultPath, printf "default install location (%s)" defaultPath)
   ]
   where
     findInPath :: IO FilePath
@@ -195,6 +246,13 @@ candidateCUDAInstallPaths verbosity =
       -- The obtained path is likely TOOLKIT/bin/nvcc. We want to extract the
       -- TOOLKIT part
       return (takeDirectory $ takeDirectory nvccPath)
+
+    defaultPath :: FilePath
+    defaultPath = defaultCUDAInstallPath platform
+
+
+defaultCUDAInstallPath :: Platform -> FilePath
+defaultCUDAInstallPath _ = "/usr/local/cuda"  -- windows?
 
 
 -- NOTE: this function throws an exception when there is no `nvcc` in PATH.
