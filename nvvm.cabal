@@ -41,6 +41,13 @@ extra-source-files:
 extra-tmp-files:
     nvvm.buildinfo.generated
 
+custom-setup
+  setup-depends:
+      base              >= 4.6
+    , Cabal             >= 1.24
+    , directory         >= 1.0
+    , filepath          >= 1.0
+
 library
   default-language:     Haskell2010
   include-dirs:         .
