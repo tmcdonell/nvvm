@@ -31,7 +31,7 @@ maintainer:             Trevor L. McDonell <tmcdonell@cse.unsw.edu.au>
 copyright:              [2016] Trevor L. McDonell
 category:               Foreign
 build-type:             Custom
-cabal-version:          >=1.10
+cabal-version:          >= 1.24
 
 extra-source-files:
     CHANGELOG.md
