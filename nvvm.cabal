@@ -69,7 +69,7 @@ library
     , template-haskell
 
   build-tools:
-      c2hs              >= 0.26.1
+      c2hs              >= 0.21
 
 
 source-repository head
