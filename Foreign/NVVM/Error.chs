@@ -72,6 +72,8 @@ instance Show NVVMException where
 -- | Throw an exception. Exceptions may be thrown from pure code, but can only
 -- be caught in the 'IO' monad.
 --
+{-# RULES "nvvmError/IO" nvvmError = nvvmErrorIO #-}
+{-# NOINLINE [1] nvvmError #-}
 nvvmError :: String -> a
 nvvmError s = throw (UserError s)
 
