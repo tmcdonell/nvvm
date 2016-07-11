@@ -274,8 +274,10 @@ withCompileOptions opts next =
 {-# INLINEABLE retrieve #-}
 retrieve :: IO (Status, Int) -> (ForeignPtr Word8 -> IO Status) -> IO ByteString
 retrieve size payload = do
-  bytes <- resultIfOk  =<< size
-  fp    <- mallocForeignPtrBytes bytes
-  _     <- nothingIfOk =<< payload fp
-  return (B.fromForeignPtr fp 0 bytes)
+  bytes <- resultIfOk =<< size
+  if bytes <= 1                                     -- size includes NULL terminator
+    then return B.empty
+    else do fp <- mallocForeignPtrBytes bytes
+            _  <- nothingIfOk =<< payload fp
+            return (B.fromForeignPtr fp 0 bytes)
 
