@@ -40,6 +40,7 @@ import Text.Printf
   , NVVM_SUCCESS                   as Success
   , NVVM_ERROR_IR_VERSION_MISMATCH as IRVersionMismatch
   , NVVM_ERROR_INVALID_IR          as InvalidIR
+  , NVVM_ERROR_COMPILATION         as CompilationFailure
   }
   with prefix="NVVM_ERROR" deriving (Eq, Show) #}
 
