@@ -1,3 +1,4 @@
 dist
 nvvm.buildinfo.generated
 nvvm.buildinfo
+.stack-work
