@@ -213,6 +213,7 @@ compile !prg !opts = do
         -> `Status' cToEnum
     #}
 
+
 -- | Verify the NVVM program. Returns whether compilation will succeed, together
 -- with any error or warning messages.
 --
