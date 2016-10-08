@@ -63,7 +63,7 @@ library
       Foreign.NVVM.Internal.C2HS
 
   build-depends:
-      base              >= 4.6
+      base              >= 4.6 && < 5
     , bytestring
     , cuda              >= 0.7
     , template-haskell
