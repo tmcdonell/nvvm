@@ -4,6 +4,176 @@
 -- Copyright : [2016] Trevor L. McDonell
 -- License   : BSD
 --
+-- This module defines an interface to the /libNVVM/ library provided by NVIDIA as
+-- part of the CUDA toolkit. It compiles NVVM IR, a compiler intermediate
+-- representation based on LLVM IR, into PTX code suitable for execution on
+-- NVIDIA GPUs. NVVM IR is a subset of LLVM IR, with a set of rules,
+-- restrictions, conventions, and intrinsic functions.
+--
+-- NVIDIA's own 'nvcc' compiler uses NVVM IR and /libNVVM/ internally as part of
+-- the CUDA C compilation process. In contrast to the (open-source) NVPTX target
+-- included with the standard LLVM toolchain (which also compiles NVVM IR into
+-- PTX code), /libNVVM/ includes a set of proprietary optimisation passes, which
+-- /may/ result in faster GPU code. More information on NVVM IR can be found
+-- here:
+--
+-- <http://docs.nvidia.com/cuda/nvvm-ir-spec/index.html>
+--
+-- The following is a short tutorial on using this library. The steps can be
+-- copied into a file, or run directly in @ghci@, in which case @ghci@ should be
+-- launched with the option @-fno-ghci-sandbox@. This is because CUDA maintains
+-- CPU-local state, so operations must be run from a bound thread.
+--
+-- Note that the focus of this library is the generation of executable PTX code
+-- from NVVM IR, so we will additionally need to use the 'cuda' package to
+-- control and execute the compiled program. In this tutorial we will go over
+-- those steps quickly, but see the 'cuda' package for more information and
+-- a similar tutorial:
+--
+-- <https://hackage.haskell.org/package/cuda>
+--
+--
+-- [/Initialise the CUDA environment/]
+--
+-- Before any operation can be performed, we must initialise the CUDA Driver
+-- API.
+--
+-- >>> import Foreign.CUDA.Driver as CUDA
+-- >>> CUDA.initialise []
+--
+-- Select a GPU and create an execution context for that device. Each available
+-- device is given a unique numeric identifier (beginning at zero). For this
+-- example we just select the first device (the default).
+--
+-- >>> dev0 <- CUDA.device 0
+-- >>> prp0 <- CUDA.props dev0
+-- >>> ctx0 <- CUDA.create dev0 []
+--
+-- Remember that once the context is no longer needed, it should be
+-- 'Foreign.CUDA.Driver.Context.Base.destroy'ed in order to free up any
+-- resources that were allocated into it.
+--
+-- [/Compiling kernels with NVVM/]
+--
+-- For this example we will step through executing the equivalent of the
+-- following Haskell function, which element-wise adds the elements of two
+-- arrays:
+--
+-- >>> vecAdd xs ys = zipWith (+) xs ys
+--
+-- The following NVVM IR implements this for the GPU. Note that this example is
+-- written using NVVM IR version 1.2 syntax (corresponding to CUDA toolkit 7.5),
+-- which is based on LLVM IR version 3.4. The human readable representation of
+-- LLVM IR (and by extension NVVM IR) is notorious for changing between
+-- releases, whereas the bitcode representation is somewhat more stable. You may
+-- wish to keep this in mind for your own programs.
+--
+-- > target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v32:32:32-v64:64:64-v128:128:128-n16:32:64"
+-- > target triple = "nvptx64-nvidia-cuda"
+-- >
+-- > define void @vecAdd(float* %A, float* %B, float* %C) {
+-- > entry:
+-- >   ; What is my ID?
+-- >   %id = tail call i32 @llvm.nvvm.read.ptx.sreg.tid.x() readnone nounwind
+-- >
+-- >   ; Compute pointers into A, B, and C
+-- >   %ptrA = getelementptr float* %A, i32 %id
+-- >   %ptrB = getelementptr float* %B, i32 %id
+-- >   %ptrC = getelementptr float* %C, i32 %id
+-- >
+-- >   ; Read A, B
+-- >   %valA = load float* %ptrA, align 4
+-- >   %valB = load float* %ptrB, align 4
+-- >
+-- >   ; Compute C = A + B
+-- >   %valC = fadd float %valA, %valB
+-- >
+-- >   ; Store back to C
+-- >   store float %valC, float* %ptrC, align 4
+-- >
+-- >   ret void
+-- > }
+-- >
+-- > ; Intrinsic to read threadIdx.x
+-- > declare i32 @llvm.nvvm.read.ptx.sreg.tid.x() readnone nounwind
+-- >
+-- > !nvvm.annotations = !{!0}
+-- > !0 = metadata !{void (float*, float*, float*)* @vecAdd, metadata !"kernel", i64 1}
+--
+-- For reference, in CUDA this kernel would have been written as:
+--
+-- > extern "C" __global__ void vecAdd(float *xs, float* ys, float *zs)
+-- > {
+-- >     int ix = threadIdx.x;
+-- >
+-- >     zs[ix] = xs[ix] + ys[ix];
+-- > }
+--
+-- The NVVM IR can be stored directly in the program as a @[Byte]String@, but
+-- here I will assume that it is saved to a file @vector_add.ll@:
+--
+-- >>> import Data.ByteString as B
+-- >>> ll <- B.readFile "vector_add.ll"
+--
+-- Now we can use NVVM to compile this into PTX code:
+--
+-- >>> import Foreign.NVVM as NVVM
+-- >>> ptx <- NVVM.compileModule "vecAdd" ll [ NVVM.Target (CUDA.computeCapability prp0) ]
+--
+-- Notice that we asked NVVM to specialise the generated PTX code for our
+-- current device. By default the code will be compiled for compute capability
+-- 2.0 (the earliest supported target).
+--
+-- The generated PTX code can then be loaded into the current CUDA execution
+-- context, from which we can extract a reference to the GPU kernel that we will
+-- later execute.
+--
+-- >>> mdl    <- CUDA.loadData (NVVM.compileResult ptx)
+-- >>> vecAdd <- CUDA.getFun mdl "vecAdd"
+--
+-- After we are finished with the module, it is a good idea to
+-- 'Foreign.CUDA.Driver.Module.Base.unload' it in order to free any resources it
+-- used.
+--
+-- [/Executing the kernel/]
+--
+-- Executing the 'vecAdd' kernel now proceeds exactly like executing any other
+-- kernel function using the CUDA Driver API. The following is a quick overview;
+-- see the tutorial in the 'cuda' package for more information.
+--
+-- First, generate some data and copy it to the device. We also allocate an
+-- (uninitialised) array on the device to store the results.
+--
+-- >>> let xs = [1..256]   :: [Float]
+-- >>> let ys = [2,4..512] :: [Float]
+-- >>> xs_dev <- CUDA.newListArray xs
+-- >>> ys_dev <- CUDA.newListArray ys
+-- >>> zs_dev <- CUDA.mallocArray 256 :: IO (CUDA.DevicePtr Float)
+--
+-- For this simple kernel we execute it using a single (one dimensional) thread
+-- block, with one thread computing each element of the output.
+--
+-- >>> CUDA.launchKernel vecAdd (1,1,1) (256,1,1) 0 Nothing [CUDA.VArg xs_dev, CUDA.VArg ys_dev, CUDA.VArg zs_dev]
+--
+-- Finally, we can copy the results back to the host, and deallocate the arrays
+-- from the GPU.
+--
+-- >>> zs <- CUDA.peekListArray 256 zs_dev
+-- >>> CUDA.free xs_dev
+-- >>> CUDA.free ys_dev
+-- >>> CUDA.free zs_dev
+--
+--
+-- [/Next steps/]
+--
+-- The library also provides functions for compiling several NVVM IR sources
+-- into a single module. In particular this is useful when linking against
+-- @libdevice@, a standard library of functions in NVVM IR which implement, for
+-- example, math primitives and bitwise operations. More information on
+-- @libdevice@ can be found here:
+--
+-- <http://docs.nvidia.com/cuda/libdevice-users-guide/index.html>
+--
 --------------------------------------------------------------------------------
 
 module Foreign.NVVM (

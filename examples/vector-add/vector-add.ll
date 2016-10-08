@@ -24,7 +24,7 @@ entry:
   ret void
 }
 
-; Intrinsic to read X component of thread ID
+; Intrinsic to read threadIdx.x
 declare i32 @llvm.nvvm.read.ptx.sreg.tid.x() readnone nounwind
 
 !nvvm.annotations = !{!0}
