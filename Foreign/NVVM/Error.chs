@@ -19,7 +19,9 @@ module Foreign.NVVM.Error (
 ) where
 
 import Foreign.NVVM.Internal.C2HS
-import Foreign.C.String
+import Foreign.C
+import Foreign.Ptr
+import System.IO.Unsafe
 
 import Control.Exception
 import Data.Typeable
