@@ -49,6 +49,7 @@ module Foreign.NVVM.Internal.C2HS (
 
   -- * Conversion between C and Haskell types
   cIntConv, cFloatConv, cToBool, cFromBool, cToEnum, cFromEnum
+
 ) where
 
 

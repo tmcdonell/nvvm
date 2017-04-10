@@ -20,6 +20,8 @@ module Foreign.NVVM.Info (
 import Foreign.NVVM.Error
 import Foreign.NVVM.Internal.C2HS
 import Foreign.Marshal
+import Foreign.C
+import Foreign.Ptr
 
 import Data.Version
 import System.IO.Unsafe
