@@ -17,11 +17,8 @@ description:
   .
   <https://developer.nvidia.com/cuda-toolkit>
   .
-  The configure step will look for your CUDA installation in the standard
-  places, and if the `nvcc` compiler is found in your `PATH`, relative to that.
-  .
-  This package tested with version 7.5 of the CUDA toolkit.
-  .
+  See the <https://travis-ci.org/tmcdonell/nvvm travis-ci.org> build matrix
+  for tested CUDA library versions.
 
 license:                BSD3
 license-file:           LICENSE
@@ -45,6 +42,7 @@ custom-setup
   setup-depends:
       base              >= 4.6
     , Cabal             >= 1.22
+    , cuda              >= 0.8
     , directory         >= 1.0
     , filepath          >= 1.0
     , template-haskell
@@ -66,7 +64,7 @@ library
   build-depends:
       base              >= 4.6 && < 5
     , bytestring
-    , cuda              >= 0.7
+    , cuda              >= 0.8
     , template-haskell
 
   build-tools:
