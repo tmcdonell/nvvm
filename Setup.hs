@@ -14,9 +14,10 @@ import Distribution.Simple
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Command
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Simple.PreProcess                               hiding ( ppC2hs )
+import Distribution.Simple.PreProcess
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
+import Distribution.Simple.Program.Find
 import Distribution.Simple.Setup
 import Distribution.Simple.Utils
 import Distribution.System
