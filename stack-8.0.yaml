@@ -6,13 +6,13 @@
 # For advanced use and comprehensive documentation of the format, please see:
 # http://docs.haskellstack.org/en/stable/yaml_configuration/
 
-resolver: lts-8.0
+resolver: lts-9.0
 
 packages:
 - '.'
 - location:
     git:    https://github.com/tmcdonell/cuda.git
-    commit: 1bff17152088384b71a439b01ec993a54e2618c9
+    commit: c39da756025d7a6fd9fb3fd368736ee05ced5df2
   extra-dep: true
 
 # Dependency packages to be pulled from upstream that are not in the resolver
