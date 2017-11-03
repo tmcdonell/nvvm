@@ -62,8 +62,8 @@ nvvmLibraryPath platform@(Platform arch os) = nvvmPath platform </> libpath
   where
     libpath =
       case (os, arch) of
-        (Windows, I386)   -> "Win32"
-        (Windows, X86_64) -> "x64"
+        (Windows, I386)   -> "lib" </> "Win32"
+        (Windows, X86_64) -> "lib" </> "x64"
         (OSX,     _)      -> "lib"    -- MacOS does not distinguish 32- vs. 64-bit paths
         (_,       X86_64) -> "lib64"  -- treat all others similarly
         _                 -> "lib"
