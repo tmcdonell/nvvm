@@ -4,7 +4,7 @@ Notable changes to the project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
-## [next]
+## [0.8.0.1] - 2017-11-15
   * [#2]: Fix nvvm library path on windows
 
 ## [0.8.0.0] - 2017-08-24
@@ -20,7 +20,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
   * First version. Released on an unsuspecting world.
 
 
-[next]:         https://github.com/tmcdonell/nvvm/compare/v0.8.0.0...HEAD
+[0.8.0.1]:      https://github.com/tmcdonell/nvvm/compare/v0.8.0.0...v0.8.0.1
 [0.8.0.0]:      https://github.com/tmcdonell/nvvm/compare/v0.7.5.2...v0.8.0.0
 [0.7.5.2]:      https://github.com/tmcdonell/nvvm/compare/0.7.5.1...v0.7.5.2
 [0.7.5.1]:      https://github.com/tmcdonell/nvvm/compare/0.7.5.0...0.7.5.1
