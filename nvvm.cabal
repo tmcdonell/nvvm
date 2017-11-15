@@ -1,5 +1,5 @@
 name:                   nvvm
-version:                0.8.0.0
+version:                0.8.0.1
 synopsis:               FFI bindings to NVVM
 description:
   The NVVM library compiles NVVM IR (a subset of LLVM IR) into PTX code which
@@ -83,7 +83,7 @@ source-repository head
 source-repository this
   type:                 git
   location:             https://github.com/tmcdonell/nvvm
-  tag:                  v0.8.0.0
+  tag:                  v0.8.0.1
 
 -- vim: nospell
 
