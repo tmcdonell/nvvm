@@ -115,12 +115,13 @@ main = defaultMainWithHooks customHooks
     postConfHook :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO ()
     postConfHook args flags pkg_descr lbi = do
       let
-          verbosity       = fromFlag (configVerbosity flags)
+          verbosity       = fromFlagOrDefault normal (configVerbosity flags)
+          profile         = fromFlagOrDefault False  (configProfLib flags)
           currentPlatform = hostPlatform lbi
           compilerId_     = compilerId (compiler lbi)
       --
       noExtraFlags args
-      generateAndStoreBuildInfo verbosity currentPlatform compilerId_ generatedBuldInfoFilePath
+      generateAndStoreBuildInfo verbosity profile currentPlatform compilerId_ generatedBuldInfoFilePath
       validateLinker verbosity currentPlatform $ withPrograms lbi
       --
       actualBuildInfoToUse <- getHookedBuildInfo verbosity
@@ -209,9 +210,9 @@ getHookedBuildInfo verbosity = do
 
 -- Runs CUDA detection procedure and stores .buildinfo to a file.
 --
-generateAndStoreBuildInfo :: Verbosity -> Platform -> CompilerId -> FilePath -> IO ()
-generateAndStoreBuildInfo verbosity platform (CompilerId _ghcFlavor ghcVersion) path =
-  storeHookedBuildInfo verbosity path =<< libraryBuildInfo platform ghcVersion
+generateAndStoreBuildInfo :: Verbosity -> Bool -> Platform -> CompilerId -> FilePath -> IO ()
+generateAndStoreBuildInfo verbosity profile platform (CompilerId _ghcFlavor ghcVersion) path =
+  storeHookedBuildInfo verbosity path =<< libraryBuildInfo profile platform ghcVersion
 
 findProgram :: Verbosity -> FilePath -> IO (Maybe FilePath)
 findProgram verbosity prog =
@@ -230,8 +231,8 @@ instance FindProgram (IO (Maybe FilePath)) where
 -- Generates build info with flags needed for CUDA Toolkit to be properly
 -- visible to underlying build tools.
 --
-libraryBuildInfo :: Platform -> Version -> IO HookedBuildInfo
-libraryBuildInfo platform@(Platform arch os) ghcVersion = do
+libraryBuildInfo :: Bool -> Platform -> Version -> IO HookedBuildInfo
+libraryBuildInfo profile platform@(Platform arch os) ghcVersion = do
   let
       -- XXX
       libraryPaths      = [nvvmLibraryPath platform]
@@ -243,7 +244,7 @@ libraryBuildInfo platform@(Platform arch os) ghcVersion = do
       ldOptions'        = map ("-L"++) extraLibDirs'
       ghcOptions        = map ("-optc"++) ccOptions'
                        ++ map ("-optl"++) ldOptions'
-                       ++ if os /= Windows
+                       ++ if os /= Windows && not profile
                             then map ("-optl-Wl,-rpath,"++) extraLibDirs'
                             else []
       extraLibs'        = nvvmLibrary platform
