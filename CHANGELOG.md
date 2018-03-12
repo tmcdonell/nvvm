@@ -4,25 +4,35 @@ Notable changes to the project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.8.0.3] - 2018-03-12
+### Fixed
+  * Build fix for Cabal-2.2 (ghc-8.4)
+
 ## [0.8.0.2] - 2018-01-05
+### Fixed
   * Fix profiling build
 
 ## [0.8.0.1] - 2017-11-15
-  * [#2]: Fix nvvm library path on windows
+### Fixed
+  * Fix nvvm library path on windows ([#2])
 
 ## [0.8.0.0] - 2017-08-24
+### Changed
   * Build setup improvements
 
 ## [0.7.5.2] - 2017-04-10
-  * Add support for c2hs < 0.26
+### Added
+  * Add support for older c2hs versions
 
 ## [0.7.5.1] - 2016-11-08
+### Added
   * Add support for Cabal-1.22
 
 ## [0.7.5.0] - 2016-10-08
   * First version. Released on an unsuspecting world.
 
 
+[0.8.0.3]:      https://github.com/tmcdonell/nvvm/compare/v0.8.0.2...v0.8.0.3
 [0.8.0.2]:      https://github.com/tmcdonell/nvvm/compare/v0.8.0.1...v0.8.0.2
 [0.8.0.1]:      https://github.com/tmcdonell/nvvm/compare/v0.8.0.0...v0.8.0.1
 [0.8.0.0]:      https://github.com/tmcdonell/nvvm/compare/v0.7.5.2...v0.8.0.0

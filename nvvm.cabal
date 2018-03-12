@@ -1,5 +1,5 @@
 name:                   nvvm
-version:                0.8.0.2
+version:                0.8.0.3
 synopsis:               FFI bindings to NVVM
 description:
   The NVVM library compiles NVVM IR (a subset of LLVM IR) into PTX code which
@@ -28,7 +28,7 @@ maintainer:             Trevor L. McDonell <tmcdonell@cse.unsw.edu.au>
 copyright:              [2016] Trevor L. McDonell
 category:               Foreign
 build-type:             Custom
-cabal-version:          >= 1.22
+cabal-version:          >= 1.24
 
 extra-source-files:
     CHANGELOG.md
@@ -41,7 +41,7 @@ extra-tmp-files:
 custom-setup
   setup-depends:
       base              >= 4.6
-    , Cabal             >= 1.22
+    , Cabal             >= 1.24
     , cuda              >= 0.8
     , directory         >= 1.0
     , filepath          >= 1.0
@@ -83,7 +83,7 @@ source-repository head
 source-repository this
   type:                 git
   location:             https://github.com/tmcdonell/nvvm
-  tag:                  v0.8.0.2
+  tag:                  v0.8.0.3
 
 -- vim: nospell
 

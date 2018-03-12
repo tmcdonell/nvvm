@@ -1,7 +1,10 @@
 Haskell FFI Bindings to NVVM
 ============================
 
-[![Build status](https://travis-ci.org/tmcdonell/nvvm.svg?branch=master)](https://travis-ci.org/tmcdonell/nvvm)
+[![Travis build status](https://img.shields.io/travis/tmcdonell/nvvm/master.svg?label=linux)](https://travis-ci.org/tmcdonell/nvvm)
+[![AppVeyor build status](https://img.shields.io/appveyor/ci/tmcdonell/nvvm/master.svg?label=windows)](https://ci.appveyor.com/project/tmcdonell/nvvm)
+[![Stackage LTS](https://stackage.org/package/nvvm/badge/lts)](https://stackage.org/lts/package/nvvm)
+[![Stackage Nightly](https://stackage.org/package/nvvm/badge/nightly)](https://stackage.org/nightly/package/nvvm)
 [![Hackage](https://img.shields.io/hackage/v/nvvm.svg)](https://hackage.haskell.org/package/nvvm)
 
 The NVVM library compiles [NVVM IR][nvvm-ir-spec] (a subset of LLVM IR) into PTX code which can

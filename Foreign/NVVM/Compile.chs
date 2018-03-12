@@ -144,7 +144,7 @@ destroy !prg = nothingIfOk =<< nvvmDestroyProgram prg
 {-# INLINEABLE addModule #-}
 addModule
     :: Program          -- ^ NVVM program to add to
-    -> String           -- ^ Name of the module (defaults to "<unnamed>" if empty)
+    -> String           -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
     -> ByteString       -- ^ NVVM IR module in either bitcode or textual representation
     -> IO ()
 addModule !prg !name !bs =
@@ -158,7 +158,7 @@ addModule !prg !name !bs =
 {-# INLINEABLE addModuleFromPtr #-}
 addModuleFromPtr
     :: Program          -- ^ NVVM program to add to
-    -> String           -- ^ Name of the module (defaults to "<unnamed>" if empty)
+    -> String           -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
     -> Int              -- ^ Number of bytes in the module
     -> Ptr Word8        -- ^ NVVM IR module in bitcode or textual representation
     -> IO ()
