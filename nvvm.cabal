@@ -28,7 +28,7 @@ maintainer:             Trevor L. McDonell <tmcdonell@cse.unsw.edu.au>
 copyright:              [2016] Trevor L. McDonell
 category:               Foreign
 build-type:             Custom
-cabal-version:          >= 1.22
+cabal-version:          >= 1.24
 
 extra-source-files:
     CHANGELOG.md
@@ -41,7 +41,7 @@ extra-tmp-files:
 custom-setup
   setup-depends:
       base              >= 4.6
-    , Cabal             >= 1.22
+    , Cabal             >= 1.24
     , cuda              >= 0.8
     , directory         >= 1.0
     , filepath          >= 1.0
