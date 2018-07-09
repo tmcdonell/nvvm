@@ -153,7 +153,11 @@ main = defaultMainWithHooks customHooks
                  -- False -> [| head (componentLibraries (getComponentLocalBuildInfo lbi CLibName)) |]
              )
 #endif
-          sharedLib           = buildDir lbi </> mkSharedLibName cid uid
+#if MIN_VERSION_Cabal(2,3,0)
+          sharedLib           = buildDir lbi </> mkSharedLibName platform cid uid
+#else
+          sharedLib           = buildDir lbi </> mkSharedLibName          cid uid
+#endif
           Just extraLibDirs'  = extraLibDirs . libBuildInfo <$> library pkg_descr
       --
       updateLibraryRPATHs verbosity platform sharedLib extraLibDirs'
