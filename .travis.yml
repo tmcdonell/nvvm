@@ -51,6 +51,7 @@ before_install:
         8.0)  export CABAL=1.24 ;;
         8.2)  export CABAL=2.0  ;;
         8.4)  export CABAL=2.0  ;;
+        8.6)  export CABAL=2.0  ;;
       esac
   - export PATH=/opt/cabal/$CABAL/bin:/opt/alex/3.1.7/bin:/opt/happy/1.19.5/bin:$HOME/.cabal/bin:$PATH
   - export CUDA_INSTALL_EXTRA_LIBS=0
