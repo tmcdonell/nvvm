@@ -4,6 +4,10 @@ Notable changes to the project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [next]
+### Fixed
+  * Build fix for ghc-8.6
+
 ## [0.8.0.3] - 2018-03-12
 ### Fixed
   * Build fix for Cabal-2.2 (ghc-8.4)
@@ -32,6 +36,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
   * First version. Released on an unsuspecting world.
 
 
+[next]:         https://github.com/tmcdonell/nvvm/compare/v0.8.0.3...HEAD
 [0.8.0.3]:      https://github.com/tmcdonell/nvvm/compare/v0.8.0.2...v0.8.0.3
 [0.8.0.2]:      https://github.com/tmcdonell/nvvm/compare/v0.8.0.1...v0.8.0.2
 [0.8.0.1]:      https://github.com/tmcdonell/nvvm/compare/v0.8.0.0...v0.8.0.1
