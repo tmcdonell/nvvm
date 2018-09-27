@@ -20,7 +20,8 @@ module Foreign.NVVM.Compile (
 
   create,
   destroy,
-  addModule, addModuleFromPtr,
+  addModule,     addModuleFromPtr,
+  addModuleLazy, addModuleLazyFromPtr,
   compile,
   verify
 
@@ -108,16 +109,11 @@ compileModules !bss !opts =
 -- <http://docs.nvidia.com/cuda/libnvvm-api/group__compilation.html#group__compilation_1g46a0ab04a063cba28bfbb41a1939e3f4>
 --
 {-# INLINEABLE create #-}
-create :: IO Program
-create = resultIfOk =<< nvvmCreateProgram
-  where
-    peekProgram ptr = Program `fmap` peek ptr
-    {#
-      fun unsafe nvvmCreateProgram
-        { alloca- `Program' peekProgram*
-        }
-        -> `Status' cToEnum
-    #}
+{# fun unsafe nvvmCreateProgram as create
+    { alloca- `Program' peekProgram*
+    }
+    -> `()' checkStatus*-
+#}
 
 
 -- | Destroy a 'Program'
@@ -125,16 +121,12 @@ create = resultIfOk =<< nvvmCreateProgram
 -- <http://docs.nvidia.com/cuda/libnvvm-api/group__compilation.html#group__compilation_1gfba94cab1224c0152841b80690d366aa>
 --
 {-# INLINEABLE destroy #-}
-destroy :: Program -> IO ()
-destroy !prg = nothingIfOk =<< nvvmDestroyProgram prg
-  where
-    withProgram p = with (useProgram p)
-    {#
-      fun unsafe nvvmDestroyProgram
-        { withProgram* `Program'
-        }
-        -> `Status' cToEnum
-    #}
+{#
+  fun unsafe nvvmDestroyProgram as destroy
+    { withProgram* `Program'
+    }
+    -> `()' checkStatus*-
+#}
 
 
 -- | Add a module level NVVM IR to a program
@@ -163,7 +155,7 @@ addModuleFromPtr
     -> Ptr Word8        -- ^ NVVM IR module in bitcode or textual representation
     -> IO ()
 addModuleFromPtr !prg !name !size !buffer =
-  nothingIfOk =<< nvvmAddModuleToProgram prg buffer size name
+  nvvmAddModuleToProgram prg buffer size name
   where
     {#
       fun unsafe nvvmAddModuleToProgram
@@ -172,7 +164,57 @@ addModuleFromPtr !prg !name !size !buffer =
         , cIntConv     `Int'
         , withCString* `String'
         }
-        -> `Status' cToEnum
+        -> `()' checkStatus*-
+    #}
+
+
+-- | Add a module level NVVM IR to a program.
+--
+-- The module is loaded lazily: only symbols required by modules loaded using
+-- 'addModule' or 'addModuleFromPtr' will be loaded.
+--
+-- Requires CUDA-10.0
+--
+-- <https://docs.nvidia.com/cuda/libnvvm-api/group__compilation.html#group__compilation_1g5356ce5063db232cd4330b666c62219b>
+--
+-- @since 0.9.0.0
+--
+{-# INLINEABLE addModuleLazy #-}
+addModuleLazy
+    :: Program
+    -> String
+    -> ByteString
+    -> IO ()
+addModuleLazy !prg !name !bs =
+  B.unsafeUseAsCStringLen bs $ \(buffer, size) ->
+  addModuleLazyFromPtr prg name size (castPtr buffer)
+
+
+-- | As with 'addModuleLazy', but the module symbols will be loaded lazily (the
+-- data in the buffer will be read immediately).
+--
+-- Requires CUDA-10.0
+--
+-- @since 0.9.0.0
+--
+{-# INLINEABLE addModuleLazyFromPtr #-}
+addModuleLazyFromPtr
+    :: Program          -- ^ NVVM program to add to
+    -> String           -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
+    -> Int              -- ^ Number of bytes in the module
+    -> Ptr Word8        -- ^ NVVM IR in bitcode or textual representation
+    -> IO ()
+addModuleLazyFromPtr !prg !name !size !buffer =
+  nvvmLazyAddModuleToProgram prg buffer size name
+  where
+    {#
+      fun unsafe nvvmLazyAddModuleToProgram
+        { useProgram `Program'
+        , castPtr    `Ptr Word8'
+        , cIntConv   `Int'
+        , withCString* `String'
+        }
+        -> `()' checkStatus*-
     #}
 
 
@@ -203,14 +245,14 @@ compile !prg !opts = do
         { useProgram `Program'
         , alloca-    `Int'     peekIntConv*
         }
-        -> `Status' cToEnum
+        -> `()' checkStatus*-
     #}
 
     {# fun unsafe nvvmGetCompiledResult
         { useProgram       `Program'
         , withForeignPtr'* `ForeignPtr Word8'
         }
-        -> `Status' cToEnum
+        -> `()' checkStatus*-
     #}
 
 
@@ -238,14 +280,14 @@ verify !prg !opts = do
     { useProgram `Program'
     , alloca-    `Int'     peekIntConv*
     }
-    -> `Status' cToEnum
+    -> `()' checkStatus*-
 #}
 
 {# fun unsafe nvvmGetProgramLog
     { useProgram       `Program'
     , withForeignPtr'* `ForeignPtr Word8'
     }
-    -> `Status' cToEnum
+    -> `()' checkStatus*-
 #}
 
 
@@ -272,12 +314,20 @@ withCompileOptions opts next =
     toStr GenerateDebugInfo      = "-g"
 
 {-# INLINEABLE retrieve #-}
-retrieve :: IO (Status, Int) -> (ForeignPtr Word8 -> IO Status) -> IO ByteString
-retrieve size payload = do
-  bytes <- resultIfOk =<< size
-  if bytes <= 1                                     -- size includes NULL terminator
+retrieve :: IO Int -> (ForeignPtr Word8 -> IO ()) -> IO ByteString
+retrieve size fill = do
+  bytes <- size
+  if bytes <= 1             -- size includes NULL terminator
     then return B.empty
     else do fp <- mallocForeignPtrBytes bytes
-            _  <- nothingIfOk =<< payload fp
+            _  <- fill fp
             return (B.fromForeignPtr fp 0 bytes)
+
+{-# INLINEABLE peekProgram #-}
+peekProgram :: Ptr {# type nvvmProgram #} -> IO Program
+peekProgram p = Program `fmap` peek p
+
+{-# INLINEABLE withProgram #-}
+withProgram :: Program -> (Ptr {# type nvvmProgram #} -> IO a) -> IO a
+withProgram p = with (useProgram p)
 

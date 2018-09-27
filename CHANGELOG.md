@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 ### Fixed
   * Build fix for ghc-8.6
 
+### Added
+  * `addModuleLazy` and `addModuleLazyFromPtr` from CUDA-10.0
+
 ## [0.8.0.3] - 2018-03-12
 ### Fixed
   * Build fix for Cabal-2.2 (ghc-8.4)
