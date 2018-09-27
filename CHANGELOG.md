@@ -11,6 +11,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 ### Added
   * `addModuleLazy` and `addModuleLazyFromPtr` from CUDA-10.0
 
+### Changed
+  * Replace uses of `String` with `ShortByteString`
+
 ## [0.8.0.3] - 2018-03-12
 ### Fixed
   * Build fix for Cabal-2.2 (ghc-8.4)

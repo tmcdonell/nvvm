@@ -1,4 +1,7 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns             #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE MagicHash                #-}
+{-# LANGUAGE UnboxedTuples            #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 --------------------------------------------------------------------------------
 -- |
@@ -39,11 +42,17 @@ import Foreign.Storable
 
 import Control.Exception
 import Data.Word
-import Data.ByteString                                              ( ByteString )
 import Text.Printf
+import Data.ByteString                                              ( ByteString )
+import Data.ByteString.Short                                        ( ShortByteString )
 import qualified Data.ByteString.Char8                              as B
 import qualified Data.ByteString.Unsafe                             as B
 import qualified Data.ByteString.Internal                           as B
+import qualified Data.ByteString.Short                              as BS
+import qualified Data.ByteString.Short.Internal                     as BSI
+
+import GHC.Exts
+import GHC.Base                                                     ( IO(..) )
 
 
 #include "cbits/stubs.h"
@@ -80,7 +89,7 @@ data CompileOption
 --
 {-# INLINEABLE compileModule #-}
 compileModule
-    :: String                     -- ^ name of the module
+    :: ShortByteString            -- ^ name of the module
     -> ByteString                 -- ^ NVVM IR in either textual or bitcode representation
     -> [CompileOption]            -- ^ compiler options
     -> IO Result
@@ -92,8 +101,8 @@ compileModule !name !bs !opts =
 --
 {-# INLINEABLE compileModules #-}
 compileModules
-    :: [(String, ByteString)]     -- ^ (module name, module NVVM IR) pairs to compile
-    -> [CompileOption]            -- ^ compiler options
+    :: [(ShortByteString, ByteString)]  -- ^ (module name, module NVVM IR) pairs to compile
+    -> [CompileOption]                  -- ^ compiler options
     -> IO Result
 compileModules !bss !opts =
   bracket create destroy $ \prg -> do
@@ -135,9 +144,9 @@ compileModules !bss !opts =
 --
 {-# INLINEABLE addModule #-}
 addModule
-    :: Program          -- ^ NVVM program to add to
-    -> String           -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
-    -> ByteString       -- ^ NVVM IR module in either bitcode or textual representation
+    :: Program              -- ^ NVVM program to add to
+    -> ShortByteString      -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
+    -> ByteString           -- ^ NVVM IR module in either bitcode or textual representation
     -> IO ()
 addModule !prg !name !bs =
   B.unsafeUseAsCStringLen bs $ \(ptr,len) ->
@@ -149,20 +158,20 @@ addModule !prg !name !bs =
 --
 {-# INLINEABLE addModuleFromPtr #-}
 addModuleFromPtr
-    :: Program          -- ^ NVVM program to add to
-    -> String           -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
-    -> Int              -- ^ Number of bytes in the module
-    -> Ptr Word8        -- ^ NVVM IR module in bitcode or textual representation
+    :: Program              -- ^ NVVM program to add to
+    -> ShortByteString      -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
+    -> Int                  -- ^ Number of bytes in the module
+    -> Ptr Word8            -- ^ NVVM IR module in bitcode or textual representation
     -> IO ()
 addModuleFromPtr !prg !name !size !buffer =
   nvvmAddModuleToProgram prg buffer size name
   where
     {#
       fun unsafe nvvmAddModuleToProgram
-        { useProgram   `Program'
-        , castPtr      `Ptr Word8'
-        , cIntConv     `Int'
-        , withCString* `String'
+        { useProgram    `Program'
+        , castPtr       `Ptr Word8'
+        , cIntConv      `Int'
+        , useAsCString* `ShortByteString'
         }
         -> `()' checkStatus*-
     #}
@@ -181,9 +190,9 @@ addModuleFromPtr !prg !name !size !buffer =
 --
 {-# INLINEABLE addModuleLazy #-}
 addModuleLazy
-    :: Program          -- ^ NVVM program to add to
-    -> String           -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
-    -> ByteString       -- ^ NVVM IR module in either bitcode or textual representation
+    :: Program              -- ^ NVVM program to add to
+    -> ShortByteString      -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
+    -> ByteString           -- ^ NVVM IR module in either bitcode or textual representation
     -> IO ()
 addModuleLazy !prg !name !bs =
   B.unsafeUseAsCStringLen bs $ \(buffer, size) ->
@@ -200,20 +209,20 @@ addModuleLazy !prg !name !bs =
 --
 {-# INLINEABLE addModuleLazyFromPtr #-}
 addModuleLazyFromPtr
-    :: Program          -- ^ NVVM program to add to
-    -> String           -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
-    -> Int              -- ^ Number of bytes in the module
-    -> Ptr Word8        -- ^ NVVM IR in bitcode or textual representation
+    :: Program              -- ^ NVVM program to add to
+    -> ShortByteString      -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
+    -> Int                  -- ^ Number of bytes in the module
+    -> Ptr Word8            -- ^ NVVM IR in bitcode or textual representation
     -> IO ()
 addModuleLazyFromPtr !prg !name !size !buffer =
   nvvmLazyAddModuleToProgram prg buffer size name
   where
     {#
       fun unsafe nvvmLazyAddModuleToProgram
-        { useProgram `Program'
-        , castPtr    `Ptr Word8'
-        , cIntConv   `Int'
-        , withCString* `String'
+        { useProgram    `Program'
+        , castPtr       `Ptr Word8'
+        , cIntConv      `Int'
+        , useAsCString* `ShortByteString'
         }
         -> `()' checkStatus*-
     #}
@@ -331,4 +340,24 @@ peekProgram p = Program `fmap` peek p
 {-# INLINEABLE withProgram #-}
 withProgram :: Program -> (Ptr {# type nvvmProgram #} -> IO a) -> IO a
 withProgram p = with (useProgram p)
+
+
+-- [Short]ByteStrings are not null-terminated, so can't be passed directly to C.
+--
+-- unsafeUseAsCString :: ShortByteString -> CString
+-- unsafeUseAsCString (BI.SBS ba#) = Ptr (byteArrayContents# ba#)
+
+{-# INLINE useAsCString #-}
+useAsCString :: ShortByteString -> (CString -> IO a) -> IO a
+useAsCString (BSI.SBS ba#) action = IO $ \s0 ->
+  case sizeofByteArray# ba#                    of { n# ->
+  case newPinnedByteArray# (n# +# 1#) s0       of { (# s1, mba# #) ->
+  case byteArrayContents# (unsafeCoerce# mba#) of { addr# ->
+  case copyByteArrayToAddr# ba# 0# addr# n# s1 of { s2 ->
+  case writeWord8OffAddr# addr# n# 0## s2      of { s3 ->
+  case action (Ptr addr#)                      of { IO action' ->
+  case action' s3                              of { (# s4, r  #) ->
+  case touch# mba# s4                          of { s5 ->
+  (# s5, r #)
+ }}}}}}}}
 
