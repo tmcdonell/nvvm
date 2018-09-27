@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns             #-}
+{-# LANGUAGE CPP                      #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE MagicHash                #-}
 {-# LANGUAGE UnboxedTuples            #-}
@@ -194,9 +195,13 @@ addModuleLazy
     -> ShortByteString      -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
     -> ByteString           -- ^ NVVM IR module in either bitcode or textual representation
     -> IO ()
+#if CUDA_VERSION < 10000
+addModuleLazy = requireSDK 'addModuleLazy 10.0
+#else
 addModuleLazy !prg !name !bs =
   B.unsafeUseAsCStringLen bs $ \(buffer, size) ->
   addModuleLazyFromPtr prg name size (castPtr buffer)
+#endif
 
 
 -- | As with 'addModuleLazy', but read the specified number of bytes from the
@@ -214,6 +219,9 @@ addModuleLazyFromPtr
     -> Int                  -- ^ Number of bytes in the module
     -> Ptr Word8            -- ^ NVVM IR in bitcode or textual representation
     -> IO ()
+#if CUDA_VERSION < 10000
+addModuleLazyFromPtr = requireSDK 'addModuleLazyFromPtr 10.0
+#else
 addModuleLazyFromPtr !prg !name !size !buffer =
   nvvmLazyAddModuleToProgram prg buffer size name
   where
@@ -226,6 +234,7 @@ addModuleLazyFromPtr !prg !name !size !buffer =
         }
         -> `()' checkStatus*-
     #}
+#endif
 
 
 -- | Compile the NVVM program. Returns the log from the compiler/verifier and,
