@@ -2,6 +2,7 @@
 {-# LANGUAGE CPP                      #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE MagicHash                #-}
+{-# LANGUAGE TemplateHaskell          #-}
 {-# LANGUAGE UnboxedTuples            #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 --------------------------------------------------------------------------------
