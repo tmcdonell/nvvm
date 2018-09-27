@@ -181,17 +181,18 @@ addModuleFromPtr !prg !name !size !buffer =
 --
 {-# INLINEABLE addModuleLazy #-}
 addModuleLazy
-    :: Program
-    -> String
-    -> ByteString
+    :: Program          -- ^ NVVM program to add to
+    -> String           -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
+    -> ByteString       -- ^ NVVM IR module in either bitcode or textual representation
     -> IO ()
 addModuleLazy !prg !name !bs =
   B.unsafeUseAsCStringLen bs $ \(buffer, size) ->
   addModuleLazyFromPtr prg name size (castPtr buffer)
 
 
--- | As with 'addModuleLazy', but the module symbols will be loaded lazily (the
--- data in the buffer will be read immediately).
+-- | As with 'addModuleLazy', but read the specified number of bytes from the
+-- given pointer (the symbols are loaded lazily, the data in the buffer will be
+-- read immediately).
 --
 -- Requires CUDA-10.0
 --
