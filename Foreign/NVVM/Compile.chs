@@ -1,4 +1,9 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns             #-}
+{-# LANGUAGE CPP                      #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE MagicHash                #-}
+{-# LANGUAGE TemplateHaskell          #-}
+{-# LANGUAGE UnboxedTuples            #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 --------------------------------------------------------------------------------
 -- |
@@ -20,7 +25,8 @@ module Foreign.NVVM.Compile (
 
   create,
   destroy,
-  addModule, addModuleFromPtr,
+  addModule,     addModuleFromPtr,
+  addModuleLazy, addModuleLazyFromPtr,
   compile,
   verify
 
@@ -38,11 +44,17 @@ import Foreign.Storable
 
 import Control.Exception
 import Data.Word
-import Data.ByteString                                              ( ByteString )
 import Text.Printf
+import Data.ByteString                                              ( ByteString )
+import Data.ByteString.Short                                        ( ShortByteString )
 import qualified Data.ByteString.Char8                              as B
 import qualified Data.ByteString.Unsafe                             as B
 import qualified Data.ByteString.Internal                           as B
+import qualified Data.ByteString.Short                              as BS
+import qualified Data.ByteString.Short.Internal                     as BSI
+
+import GHC.Exts
+import GHC.Base                                                     ( IO(..) )
 
 
 #include "cbits/stubs.h"
@@ -79,7 +91,7 @@ data CompileOption
 --
 {-# INLINEABLE compileModule #-}
 compileModule
-    :: String                     -- ^ name of the module
+    :: ShortByteString            -- ^ name of the module
     -> ByteString                 -- ^ NVVM IR in either textual or bitcode representation
     -> [CompileOption]            -- ^ compiler options
     -> IO Result
@@ -91,8 +103,8 @@ compileModule !name !bs !opts =
 --
 {-# INLINEABLE compileModules #-}
 compileModules
-    :: [(String, ByteString)]     -- ^ (module name, module NVVM IR) pairs to compile
-    -> [CompileOption]            -- ^ compiler options
+    :: [(ShortByteString, ByteString)]  -- ^ (module name, module NVVM IR) pairs to compile
+    -> [CompileOption]                  -- ^ compiler options
     -> IO Result
 compileModules !bss !opts =
   bracket create destroy $ \prg -> do
@@ -108,16 +120,11 @@ compileModules !bss !opts =
 -- <http://docs.nvidia.com/cuda/libnvvm-api/group__compilation.html#group__compilation_1g46a0ab04a063cba28bfbb41a1939e3f4>
 --
 {-# INLINEABLE create #-}
-create :: IO Program
-create = resultIfOk =<< nvvmCreateProgram
-  where
-    peekProgram ptr = Program `fmap` peek ptr
-    {#
-      fun unsafe nvvmCreateProgram
-        { alloca- `Program' peekProgram*
-        }
-        -> `Status' cToEnum
-    #}
+{# fun unsafe nvvmCreateProgram as create
+    { alloca- `Program' peekProgram*
+    }
+    -> `()' checkStatus*-
+#}
 
 
 -- | Destroy a 'Program'
@@ -125,16 +132,12 @@ create = resultIfOk =<< nvvmCreateProgram
 -- <http://docs.nvidia.com/cuda/libnvvm-api/group__compilation.html#group__compilation_1gfba94cab1224c0152841b80690d366aa>
 --
 {-# INLINEABLE destroy #-}
-destroy :: Program -> IO ()
-destroy !prg = nothingIfOk =<< nvvmDestroyProgram prg
-  where
-    withProgram p = with (useProgram p)
-    {#
-      fun unsafe nvvmDestroyProgram
-        { withProgram* `Program'
-        }
-        -> `Status' cToEnum
-    #}
+{#
+  fun unsafe nvvmDestroyProgram as destroy
+    { withProgram* `Program'
+    }
+    -> `()' checkStatus*-
+#}
 
 
 -- | Add a module level NVVM IR to a program
@@ -143,9 +146,9 @@ destroy !prg = nothingIfOk =<< nvvmDestroyProgram prg
 --
 {-# INLINEABLE addModule #-}
 addModule
-    :: Program          -- ^ NVVM program to add to
-    -> String           -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
-    -> ByteString       -- ^ NVVM IR module in either bitcode or textual representation
+    :: Program              -- ^ NVVM program to add to
+    -> ShortByteString      -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
+    -> ByteString           -- ^ NVVM IR module in either bitcode or textual representation
     -> IO ()
 addModule !prg !name !bs =
   B.unsafeUseAsCStringLen bs $ \(ptr,len) ->
@@ -157,23 +160,82 @@ addModule !prg !name !bs =
 --
 {-# INLINEABLE addModuleFromPtr #-}
 addModuleFromPtr
-    :: Program          -- ^ NVVM program to add to
-    -> String           -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
-    -> Int              -- ^ Number of bytes in the module
-    -> Ptr Word8        -- ^ NVVM IR module in bitcode or textual representation
+    :: Program              -- ^ NVVM program to add to
+    -> ShortByteString      -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
+    -> Int                  -- ^ Number of bytes in the module
+    -> Ptr Word8            -- ^ NVVM IR module in bitcode or textual representation
     -> IO ()
 addModuleFromPtr !prg !name !size !buffer =
-  nothingIfOk =<< nvvmAddModuleToProgram prg buffer size name
+  nvvmAddModuleToProgram prg buffer size name
   where
     {#
       fun unsafe nvvmAddModuleToProgram
-        { useProgram   `Program'
-        , castPtr      `Ptr Word8'
-        , cIntConv     `Int'
-        , withCString* `String'
+        { useProgram    `Program'
+        , castPtr       `Ptr Word8'
+        , cIntConv      `Int'
+        , useAsCString* `ShortByteString'
         }
-        -> `Status' cToEnum
+        -> `()' checkStatus*-
     #}
+
+
+-- | Add a module level NVVM IR to a program.
+--
+-- The module is loaded lazily: only symbols required by modules loaded using
+-- 'addModule' or 'addModuleFromPtr' will be loaded.
+--
+-- Requires CUDA-10.0
+--
+-- <https://docs.nvidia.com/cuda/libnvvm-api/group__compilation.html#group__compilation_1g5356ce5063db232cd4330b666c62219b>
+--
+-- @since 0.9.0.0
+--
+{-# INLINEABLE addModuleLazy #-}
+addModuleLazy
+    :: Program              -- ^ NVVM program to add to
+    -> ShortByteString      -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
+    -> ByteString           -- ^ NVVM IR module in either bitcode or textual representation
+    -> IO ()
+#if CUDA_VERSION < 10000
+addModuleLazy = requireSDK 'addModuleLazy 10.0
+#else
+addModuleLazy !prg !name !bs =
+  B.unsafeUseAsCStringLen bs $ \(buffer, size) ->
+  addModuleLazyFromPtr prg name size (castPtr buffer)
+#endif
+
+
+-- | As with 'addModuleLazy', but read the specified number of bytes from the
+-- given pointer (the symbols are loaded lazily, the data in the buffer will be
+-- read immediately).
+--
+-- Requires CUDA-10.0
+--
+-- @since 0.9.0.0
+--
+{-# INLINEABLE addModuleLazyFromPtr #-}
+addModuleLazyFromPtr
+    :: Program              -- ^ NVVM program to add to
+    -> ShortByteString      -- ^ Name of the module (defaults to \"@\<unnamed\>@\" if empty)
+    -> Int                  -- ^ Number of bytes in the module
+    -> Ptr Word8            -- ^ NVVM IR in bitcode or textual representation
+    -> IO ()
+#if CUDA_VERSION < 10000
+addModuleLazyFromPtr = requireSDK 'addModuleLazyFromPtr 10.0
+#else
+addModuleLazyFromPtr !prg !name !size !buffer =
+  nvvmLazyAddModuleToProgram prg buffer size name
+  where
+    {#
+      fun unsafe nvvmLazyAddModuleToProgram
+        { useProgram    `Program'
+        , castPtr       `Ptr Word8'
+        , cIntConv      `Int'
+        , useAsCString* `ShortByteString'
+        }
+        -> `()' checkStatus*-
+    #}
+#endif
 
 
 -- | Compile the NVVM program. Returns the log from the compiler/verifier and,
@@ -203,14 +265,14 @@ compile !prg !opts = do
         { useProgram `Program'
         , alloca-    `Int'     peekIntConv*
         }
-        -> `Status' cToEnum
+        -> `()' checkStatus*-
     #}
 
     {# fun unsafe nvvmGetCompiledResult
         { useProgram       `Program'
         , withForeignPtr'* `ForeignPtr Word8'
         }
-        -> `Status' cToEnum
+        -> `()' checkStatus*-
     #}
 
 
@@ -238,14 +300,14 @@ verify !prg !opts = do
     { useProgram `Program'
     , alloca-    `Int'     peekIntConv*
     }
-    -> `Status' cToEnum
+    -> `()' checkStatus*-
 #}
 
 {# fun unsafe nvvmGetProgramLog
     { useProgram       `Program'
     , withForeignPtr'* `ForeignPtr Word8'
     }
-    -> `Status' cToEnum
+    -> `()' checkStatus*-
 #}
 
 
@@ -272,12 +334,40 @@ withCompileOptions opts next =
     toStr GenerateDebugInfo      = "-g"
 
 {-# INLINEABLE retrieve #-}
-retrieve :: IO (Status, Int) -> (ForeignPtr Word8 -> IO Status) -> IO ByteString
-retrieve size payload = do
-  bytes <- resultIfOk =<< size
-  if bytes <= 1                                     -- size includes NULL terminator
+retrieve :: IO Int -> (ForeignPtr Word8 -> IO ()) -> IO ByteString
+retrieve size fill = do
+  bytes <- size
+  if bytes <= 1             -- size includes NULL terminator
     then return B.empty
     else do fp <- mallocForeignPtrBytes bytes
-            _  <- nothingIfOk =<< payload fp
+            _  <- fill fp
             return (B.fromForeignPtr fp 0 bytes)
+
+{-# INLINEABLE peekProgram #-}
+peekProgram :: Ptr {# type nvvmProgram #} -> IO Program
+peekProgram p = Program `fmap` peek p
+
+{-# INLINEABLE withProgram #-}
+withProgram :: Program -> (Ptr {# type nvvmProgram #} -> IO a) -> IO a
+withProgram p = with (useProgram p)
+
+
+-- [Short]ByteStrings are not null-terminated, so can't be passed directly to C.
+--
+-- unsafeUseAsCString :: ShortByteString -> CString
+-- unsafeUseAsCString (BI.SBS ba#) = Ptr (byteArrayContents# ba#)
+
+{-# INLINE useAsCString #-}
+useAsCString :: ShortByteString -> (CString -> IO a) -> IO a
+useAsCString (BSI.SBS ba#) action = IO $ \s0 ->
+  case sizeofByteArray# ba#                    of { n# ->
+  case newPinnedByteArray# (n# +# 1#) s0       of { (# s1, mba# #) ->
+  case byteArrayContents# (unsafeCoerce# mba#) of { addr# ->
+  case copyByteArrayToAddr# ba# 0# addr# n# s1 of { s2 ->
+  case writeWord8OffAddr# addr# n# 0## s2      of { s3 ->
+  case action (Ptr addr#)                      of { IO action' ->
+  case action' s3                              of { (# s4, r  #) ->
+  case touch# mba# s4                          of { s5 ->
+  (# s5, r #)
+ }}}}}}}}
 

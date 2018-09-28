@@ -13,7 +13,7 @@ module Foreign.NVVM.Error (
 
   Status(..),
   describe,
-  resultIfOk, nothingIfOk,
+  resultIfOk, nothingIfOk, checkStatus,
   nvvmError, nvvmErrorIO, requireSDK,
 
 ) where
@@ -113,4 +113,8 @@ nothingIfOk status =
   case status of
     Success -> return ()
     _       -> throwIO (ExitCode status)
+
+{-# INLINE checkStatus #-}
+checkStatus :: CInt -> IO ()
+checkStatus = nothingIfOk . cToEnum
 
