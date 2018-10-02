@@ -1,5 +1,5 @@
 name:                   nvvm
-version:                0.8.0.3
+version:                0.9.0.0
 synopsis:               FFI bindings to NVVM
 description:
   The NVVM library compiles NVVM IR (a subset of LLVM IR) into PTX code which
@@ -23,8 +23,8 @@ description:
 license:                BSD3
 license-file:           LICENSE
 homepage:               https://github.com/tmcdonell/nvvm
-author:                 Trevor L. McDonell
-maintainer:             Trevor L. McDonell <tmcdonell@cse.unsw.edu.au>
+author:                 Trevor L. McDonell <trevor.mcdonell@gmail.com>
+maintainer:             Trevor L. McDonell <trevor.mcdonell@gmail.com>
 copyright:              [2016] Trevor L. McDonell
 category:               Foreign
 build-type:             Custom
@@ -83,7 +83,7 @@ source-repository head
 source-repository this
   type:                 git
   location:             https://github.com/tmcdonell/nvvm
-  tag:                  v0.8.0.3
+  tag:                  v0.9.0.0
 
 -- vim: nospell
 

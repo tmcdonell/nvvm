@@ -50,8 +50,8 @@ import Language.Haskell.TH
 customBuildInfoFilePath :: FilePath
 customBuildInfoFilePath = "nvvm" <.> "buildinfo"
 
-generatedBuldInfoFilePath :: FilePath
-generatedBuldInfoFilePath = customBuildInfoFilePath <.> "generated"
+generatedBuildInfoFilePath :: FilePath
+generatedBuildInfoFilePath = customBuildInfoFilePath <.> "generated"
 
 -- Location of the NVVM library relative to the base CUDA installation
 --
@@ -125,7 +125,7 @@ main = defaultMainWithHooks customHooks
           compilerId_     = compilerId (compiler lbi)
       --
       noExtraFlags args
-      generateAndStoreBuildInfo verbosity profile currentPlatform compilerId_ generatedBuldInfoFilePath
+      generateAndStoreBuildInfo verbosity profile currentPlatform compilerId_ generatedBuildInfoFilePath
       validateLinker verbosity currentPlatform $ withPrograms lbi
       --
       actualBuildInfoToUse <- getHookedBuildInfo verbosity
@@ -153,7 +153,11 @@ main = defaultMainWithHooks customHooks
                  -- False -> [| head (componentLibraries (getComponentLocalBuildInfo lbi CLibName)) |]
              )
 #endif
-          sharedLib           = buildDir lbi </> mkSharedLibName cid uid
+#if MIN_VERSION_Cabal(2,3,0)
+          sharedLib           = buildDir lbi </> mkSharedLibName platform cid uid
+#else
+          sharedLib           = buildDir lbi </> mkSharedLibName          cid uid
+#endif
           Just extraLibDirs'  = extraLibDirs . libBuildInfo <$> library pkg_descr
       --
       updateLibraryRPATHs verbosity platform sharedLib extraLibDirs'
@@ -202,14 +206,14 @@ getHookedBuildInfo verbosity = do
       notice verbosity $ printf "The user-provided buildinfo from file '%s' will be used. To use default settings, delete this file." customBuildInfoFilePath
       readHookedBuildInfo verbosity customBuildInfoFilePath
     else do
-      generatedBuildInfoExists <- doesFileExist generatedBuldInfoFilePath
+      generatedBuildInfoExists <- doesFileExist generatedBuildInfoFilePath
       if generatedBuildInfoExists
         then do
-          notice verbosity $ printf "Using build information from '%s'" generatedBuldInfoFilePath
+          notice verbosity $ printf "Using build information from '%s'" generatedBuildInfoFilePath
           notice verbosity $ printf "Provide a '%s' file to override this behaviour" customBuildInfoFilePath
-          readHookedBuildInfo verbosity generatedBuldInfoFilePath
+          readHookedBuildInfo verbosity generatedBuildInfoFilePath
         else
-          die' verbosity $ printf "Unexpected failure: neither the default '%s' nor custom '%s' exist" generatedBuldInfoFilePath customBuildInfoFilePath
+          die' verbosity $ printf "Unexpected failure: neither the default '%s' nor custom '%s' exist" generatedBuildInfoFilePath customBuildInfoFilePath
 
 
 -- Runs CUDA detection procedure and stores .buildinfo to a file.
