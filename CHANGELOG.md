@@ -4,7 +4,7 @@ Notable changes to the project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
-## [next]
+## [0.9.0.0] - 2018-10-02
 ### Fixed
   * Build fix for ghc-8.6
 
@@ -42,7 +42,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
   * First version. Released on an unsuspecting world.
 
 
-[next]:         https://github.com/tmcdonell/nvvm/compare/v0.8.0.3...HEAD
+[0.9.0.0]:      https://github.com/tmcdonell/nvvm/compare/v0.8.0.3...v0.9.0.0
 [0.8.0.3]:      https://github.com/tmcdonell/nvvm/compare/v0.8.0.2...v0.8.0.3
 [0.8.0.2]:      https://github.com/tmcdonell/nvvm/compare/v0.8.0.1...v0.8.0.2
 [0.8.0.1]:      https://github.com/tmcdonell/nvvm/compare/v0.8.0.0...v0.8.0.1
