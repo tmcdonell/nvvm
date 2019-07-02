@@ -3,3 +3,4 @@ nvvm.buildinfo.generated
 nvvm.buildinfo
 .stack-work
 /stack.yaml
+/stack.yaml.lock
