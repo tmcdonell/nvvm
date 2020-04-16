@@ -62,6 +62,7 @@ library
       Foreign.NVVM.Compile
       Foreign.NVVM.Error
       Foreign.NVVM.Info
+      Foreign.NVVM.Path
 
   other-modules:
       Foreign.NVVM.Internal.C2HS
@@ -70,6 +71,8 @@ library
       base              >= 4.6 && < 5
     , bytestring
     , cuda              >= 0.8
+    , directory
+    , filepath
     , template-haskell
 
   build-tools:
