@@ -1,13 +1,13 @@
 # For more information, see: https://docs.haskellstack.org
 # vim: nospell
 
-resolver: lts-13.25
+resolver: lts-14.27
 
 packages:
 - .
 
 extra-deps:
-- cuda-0.10.1.0
+- cuda-0.10.2.0
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
