@@ -7,7 +7,7 @@ packages:
 - .
 
 extra-deps:
-- cuda-0.10.1.0
+- cuda-0.10.2.0
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
