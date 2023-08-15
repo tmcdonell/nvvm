@@ -1,3 +1,5 @@
+cabal-version:          1.24
+
 name:                   nvvm
 version:                0.10.0.0
 synopsis:               FFI bindings to NVVM
@@ -28,7 +30,6 @@ maintainer:             Trevor L. McDonell <trevor.mcdonell@gmail.com>
 copyright:              [2016..2023] Trevor L. McDonell
 category:               Foreign
 build-type:             Custom
-cabal-version:          >= 1.24
 
 extra-source-files:
     CHANGELOG.md
@@ -40,8 +41,8 @@ extra-tmp-files:
 
 custom-setup
   setup-depends:
-      base              >= 4.6
-    , Cabal             >= 1.24
+      base              >= 4.6  && < 5
+    , Cabal             >= 1.24 && < 3.11
     , cuda              >= 0.8
     , directory         >= 1.0
     , filepath          >= 1.0
