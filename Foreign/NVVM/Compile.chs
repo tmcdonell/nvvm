@@ -51,7 +51,7 @@ import qualified Data.ByteString.Char8                              as B
 import qualified Data.ByteString.Unsafe                             as B
 import qualified Data.ByteString.Internal                           as B
 import qualified Data.ByteString.Short                              as BS
-import qualified Data.ByteString.Short.Internal                     as BSI
+import qualified Data.ByteString.Short.Internal                     as BI
 
 import GHC.Exts
 import GHC.Base                                                     ( IO(..) )
@@ -359,15 +359,21 @@ withProgram p = with (useProgram p)
 
 {-# INLINE useAsCString #-}
 useAsCString :: ShortByteString -> (CString -> IO a) -> IO a
-useAsCString (BSI.SBS ba#) action = IO $ \s0 ->
-  case sizeofByteArray# ba#                    of { n# ->
-  case newPinnedByteArray# (n# +# 1#) s0       of { (# s1, mba# #) ->
-  case byteArrayContents# (unsafeCoerce# mba#) of { addr# ->
-  case copyByteArrayToAddr# ba# 0# addr# n# s1 of { s2 ->
-  case writeWord8OffAddr# addr# n# 0## s2      of { s3 ->
-  case action (Ptr addr#)                      of { IO action' ->
-  case action' s3                              of { (# s4, r  #) ->
-  case touch# mba# s4                          of { s5 ->
+useAsCString (BI.SBS ba#) action = IO $ \s0 ->
+  case sizeofByteArray# ba#                              of { n# ->
+  case newPinnedByteArray# (n# +# 1#) s0                 of { (# s1, mba# #) ->
+  case byteArrayContents# (unsafeCoerce# mba#)           of { addr# ->
+  case copyByteArrayToAddr# ba# 0# addr# n# s1           of { s2 ->
+  case writeWord8OffAddr# addr# n# (wordToWord8# 0##) s2 of { s3 ->
+  case action (Ptr addr#)                                of { IO action' ->
+  case action' s3                                        of { (# s4, r  #) ->
+  case touch# mba# s4                                    of { s5 ->
   (# s5, r #)
  }}}}}}}}
+
+#if __GLASGOW_HASKELL__ < 902
+{-# INLINE wordToWord8# #-}
+wordToWord8# :: Word# -> Word#
+wordToWord8# x = x
+#endif
 
