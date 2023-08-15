@@ -3,7 +3,7 @@
 --------------------------------------------------------------------------------
 -- |
 -- Module    : Foreign.NVVM.Info
--- Copyright : [2016] Trevor L. McDonell
+-- Copyright : [2016..2023] Trevor L. McDonell
 -- License   : BSD
 --
 -- General information query
