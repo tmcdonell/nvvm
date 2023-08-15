@@ -4,3 +4,4 @@ nvvm.buildinfo
 .stack-work
 /stack.yaml
 /stack.yaml.lock
+dist-newstyle
