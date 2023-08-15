@@ -46,6 +46,7 @@ custom-setup
     , cuda              >= 0.8
     , directory         >= 1.0
     , filepath          >= 1.0
+    , text
     , template-haskell
 
 library

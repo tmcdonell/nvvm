@@ -1,7 +1,9 @@
-{-# LANGUAGE CPP               #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE QuasiQuotes       #-}
-{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE CPP                  #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE QuasiQuotes          #-}
+{-# LANGUAGE TemplateHaskell      #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE ExtendedDefaultRules #-}
 
 -- This macro is only available when compiling with GHC-8
 #ifndef MIN_VERSION_Cabal
@@ -39,13 +41,18 @@ import Foreign.CUDA.Path
 import Control.Applicative
 import Control.Exception
 import Control.Monad
+import Data.List
 import System.Directory
 import System.FilePath
 import Text.Printf
+import Data.Char
 import Prelude
 
 import Language.Haskell.TH
 
+import qualified Data.Text as T
+
+default (String)
 
 -- Configuration
 -- -------------
@@ -181,17 +188,47 @@ main = defaultMainWithHooks customHooks
 -- what Apple's system libraries do for example.
 --
 updateLibraryRPATHs :: Verbosity -> Platform -> FilePath -> [FilePath] -> IO ()
-updateLibraryRPATHs verbosity (Platform _ os) sharedLib extraLibDirs' =
+updateLibraryRPATHs verbosity pf@(Platform _ os) sharedLib extraLibDirs' =
   when (os == OSX) $ do
     exists <- doesFileExist sharedLib
     unless exists $ die' verbosity $ printf "Unexpected failure: library does not exist: %s" sharedLib
     --
+    rpaths <- getLibraryRPATHs verbosity pf sharedLib
     mint   <- findProgram verbosity "install_name_tool"
     case mint of
       Nothing                -> notice verbosity $ "Could not locate 'install_name_tool' in order to update LC_RPATH entries. This is likely to cause problems later on."
       Just install_name_tool ->
-        forM_ extraLibDirs' $ \libDir ->
+        forM_ (extraLibDirs' \\ rpaths) $ \libDir ->
           runProgramInvocation verbosity $ simpleProgramInvocation install_name_tool ["-add_rpath", libDir, sharedLib]
+
+parseRPATHs :: String -> [FilePath]
+parseRPATHs = loop [] . T.lines . T.pack
+  where
+    loop acc xs =
+      case break (T.isPrefixOf "Load command") xs of
+        (_, []) -> acc
+        (_, _ : cmd : rest)
+          | T.stripPrefix "cmd " (T.stripStart cmd) == Just "LC_RPATH"
+            -> let l:ls = dropWhile (not . T.isPrefixOf "path " . T.stripStart) rest
+                   Just (path, _) = T.breakOnEnd " (offset" <$> T.stripPrefix "path " (T.stripStart l)
+               in loop (T.unpack (T.dropEnd 8 path) : acc) ls
+          | otherwise -> loop acc rest
+    
+
+getLibraryRPATHs :: Verbosity -> Platform -> FilePath -> IO [FilePath]
+getLibraryRPATHs verbosity (Platform _ os) sharedLib =
+  if os /= OSX
+  then return []
+  else do
+    exists <- doesFileExist sharedLib
+    unless exists $ die' verbosity $ printf "Unexpected failure: library does not exist: %s" sharedLib
+    mint   <- findProgram verbosity "otool"
+    case mint of
+      Nothing    -> do
+        notice verbosity $ "Could not locate 'otool' in order to get LC_RPATH entries. This is likely to cause problems later on."
+        return []
+      Just otool ->
+        parseRPATHs <$> getProgramInvocationOutput verbosity (simpleProgramInvocation otool ["-l", sharedLib])
 
 
 -- Reads user-provided `nvvm.buildinfo` if present, otherwise loads `nvvm.buildinfo.generated`
@@ -440,7 +477,7 @@ getCppOptions :: BuildInfo -> LocalBuildInfo -> [String]
 getCppOptions bi lbi
     = hcDefines (compiler lbi)
    ++ ["-I" ++ dir | dir <- includeDirs bi]
-   ++ [opt | opt@('-':c:_) <- ccOptions bi, c `elem` "DIU"]
+   ++ [opt | opt@('-':c:_) <- ccOptions bi, c `elem` ("DIU" :: String)]
 
 hcDefines :: Compiler -> [String]
 hcDefines comp =
