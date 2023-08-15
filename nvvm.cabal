@@ -25,7 +25,7 @@ license-file:           LICENSE
 homepage:               https://github.com/tmcdonell/nvvm
 author:                 Trevor L. McDonell <trevor.mcdonell@gmail.com>
 maintainer:             Trevor L. McDonell <trevor.mcdonell@gmail.com>
-copyright:              [2016..2018] Trevor L. McDonell
+copyright:              [2016..2023] Trevor L. McDonell
 category:               Foreign
 build-type:             Custom
 cabal-version:          >= 1.24

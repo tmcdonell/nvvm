@@ -2,7 +2,7 @@
 --------------------------------------------------------------------------------
 -- |
 -- Module    : Foreign.NVVM.Error
--- Copyright : [2016] Trevor L. McDonell
+-- Copyright : [2016..2023] Trevor L. McDonell
 -- License   : BSD
 --
 -- Error handling

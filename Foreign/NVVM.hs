@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 -- |
 -- Module    : Foreign.NVVM
--- Copyright : [2016] Trevor L. McDonell
+-- Copyright : [2016..2023] Trevor L. McDonell
 -- License   : BSD
 --
 -- This module defines an interface to the /libNVVM/ library provided by NVIDIA as
